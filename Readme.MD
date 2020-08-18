@@ -6,5 +6,10 @@ It's foremost a tool that we use to describe problems and then solve them. I hop
 
 ## Instalation
 
+```bash
+poetry install
+poetry run
+```
+
 ## Contribution Guidelines
 

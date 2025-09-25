@@ -3,11 +3,12 @@ name: Test Hello Library
 on:
   push:
     branches:
-      - "**"
+      - "master"
   pull_request:
     types:
       - opened
       - reopened
+      - synchronize
 
 jobs:
   test:

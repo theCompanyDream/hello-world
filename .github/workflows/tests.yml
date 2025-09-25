@@ -9,8 +9,6 @@ on:
       - opened
       - reopened
       - synchronize
-    branches:
-      - master
 
 jobs:
   test:

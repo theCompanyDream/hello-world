@@ -3,7 +3,14 @@ name: Test Hello Library
 on:
   push:
     branches:
-      - "**"
+      - "master"
+  pull_request:
+    types:
+      - opened
+      - reopened
+      - synchronize
+    branches:
+      - master
 
 jobs:
   test:

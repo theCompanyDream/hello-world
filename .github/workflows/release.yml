@@ -3,8 +3,8 @@ name: Release Python Package
 
 on:
   push:
-    branches:
-      - master
+    # branches:
+    #   - master
 
 jobs:
   # Check if version changed and create tag

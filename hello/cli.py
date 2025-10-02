@@ -1,19 +1,17 @@
 import click
-import os
 
 @click.command()
-@click.argument('names', nargs=-1, type=click.Path())
-def cli(names):
+@click.argument('arguments', nargs=-1, type=click.Path())
+def cli(arguments):
     """Simple program that greets NAME for a total of COUNT times."""
 
-    if not names:
+    if not arguments:
         click.echo('No Arguments Provided')
         return
 
-    for name in names:
-        if os.path.exists(name):
-            with open(name, 'r') as file:
-                content = file.read().strip()
-                click.echo(content)
-        else:
-            click.echo(f'Hello {name}!')
+    full_name = ""
+
+    for name in arguments:
+        full_name += f"{name} "
+
+    click.echo(f'Hello {full_name}')

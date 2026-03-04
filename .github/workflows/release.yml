@@ -6,7 +6,6 @@ on:
     #   - master
 
 jobs:
-  # Check if version changed and create tag
   check-version:
     runs-on: ubuntu-latest
     outputs:
@@ -16,7 +15,7 @@ jobs:
     steps:
     - uses: actions/checkout@v6
       with:
-        fetch-depth: 0  # Get all history for tag checking
+        fetch-depth: 0
 
     - name: Set up Python
       uses: actions/setup-python@v6
@@ -30,11 +29,9 @@ jobs:
     - name: Get version from pyproject.toml
       id: get-version
       run: |
-        # Method 1: If using Poetry
         if command -v poetry &> /dev/null; then
           VERSION=$(poetry version -s)
         else
-          # Method 2: Parse pyproject.toml directly
           VERSION=$(python -c "
         import tomllib
         with open('pyproject.toml', 'rb') as f:
@@ -50,10 +47,8 @@ jobs:
       run: |
         if git tag --list | grep -q "^${{ steps.get-version.outputs.version }}$"; then
           echo "exists=true" >> $GITHUB_OUTPUT
-          echo "Tag ${{ steps.get-version.outputs.version }} already exists"
         else
           echo "exists=false" >> $GITHUB_OUTPUT
-          echo "Tag ${{ steps.get-version.outputs.version }} does not exist"
         fi
 
     - name: Should we release?
@@ -61,13 +56,10 @@ jobs:
       run: |
         if [[ "${{ steps.check-tag.outputs.exists }}" == "false" ]]; then
           echo "result=true" >> $GITHUB_OUTPUT
-          echo "Will create new release"
         else
           echo "result=false" >> $GITHUB_OUTPUT
-          echo "Skipping release - tag already exists"
         fi
 
-  # Create tag if version is new
   create-tag:
     needs: check-version
     if: needs.check-version.outputs.should-release == 'true'
@@ -75,7 +67,7 @@ jobs:
     permissions:
       contents: write
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
 
     - name: Create and push tag
       run: |
@@ -84,68 +76,16 @@ jobs:
         git tag ${{ needs.check-version.outputs.version }}
         git push origin ${{ needs.check-version.outputs.version }}
 
-  # Build and publish to PyPI
-  build-and-publish:
-    needs: [check-version, create-tag]
-    if: needs.check-version.outputs.should-release == 'true'
-    runs-on: ubuntu-latest
-    environment: release
-    permissions:
-      id-token: write  # Required for trusted publishing
-
-    steps:
-    - uses: actions/checkout@v4
-
-    - name: Set up Python
-      uses: actions/setup-python@v4
-      with:
-        python-version: '3.11'
-
-    # Install Poetry if poetry.lock exists
-    - name: Install Poetry
-      uses: snok/install-poetry@v1
-      if: hashFiles('poetry.lock') != ''
-      with:
-        virtualenvs-create: true
-        virtualenvs-in-project: true
-
-    - name: Install build dependencies
-      run: |
-        python -m pip install --upgrade pip
-        if [[ -f "poetry.lock" ]]; then
-          poetry install --no-interaction
-        else
-          pip install build twine
-        fi
-
-    - name: Build package
-      run: |
-        if [[ -f "poetry.lock" ]]; then
-          poetry build
-        else
-          python -m build
-        fi
-
-    - name: Check built package
-      run: |
-        python -m twine check dist/*
-        ls -la dist/
-
-    - name: Publish to PyPI (Trusted Publishing)
-      uses: pypa/gh-action-pypi-publish@release/v1
-
-  # Create GitHub Release
   create-release:
-    needs: [check-version, build-and-publish]
+    needs: [check-version, create-tag]
     if: needs.check-version.outputs.should-release == 'true'
     runs-on: ubuntu-latest
     permissions:
       contents: write
-
     steps:
-    - uses: actions/checkout@v4
+    - uses: actions/checkout@v6
       with:
-        fetch-depth: 0  # Need history for release notes
+        fetch-depth: 0
 
     - name: Create GitHub Release
       uses: softprops/action-gh-release@v1
@@ -159,12 +99,10 @@ jobs:
 
           ## Installation
 
+          Download the source archive from the assets below and install with:
           ```bash
-          pip install your-package-name
+                    pip install hello.tar.gz
           ```
-
-          ## What's Changed
-          ${{ steps.changelog.outputs.changes }}
         draft: false
         prerelease: false
         generate_release_notes: true

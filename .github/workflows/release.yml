@@ -1,0 +1,110 @@
+name: Release Python Package
+
+on:
+  push:
+    # branches:
+    #   - master
+
+jobs:
+  check-version:
+    runs-on: ubuntu-latest
+    outputs:
+      version: ${{ steps.get-version.outputs.version }}
+      tag-exists: ${{ steps.check-tag.outputs.exists }}
+      should-release: ${{ steps.should-release.outputs.result }}
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+
+    - name: Set up Python
+      uses: actions/setup-python@v6
+      with:
+        python-version: '3.11'
+
+    - name: Install Poetry (if using Poetry)
+      uses: snok/install-poetry@v1
+      if: contains(github.event.head_commit.message, '[poetry]') || hashFiles('poetry.lock') != ''
+
+    - name: Get version from pyproject.toml
+      id: get-version
+      run: |
+        if command -v poetry &> /dev/null; then
+          VERSION=$(poetry version -s)
+        else
+          VERSION=$(python -c "
+        import tomllib
+        with open('pyproject.toml', 'rb') as f:
+            data = tomllib.load(f)
+        print(data['project']['version'])
+        ")
+        fi
+        echo "version=v$VERSION" >> $GITHUB_OUTPUT
+        echo "Version found: v$VERSION"
+
+    - name: Check if tag exists
+      id: check-tag
+      run: |
+        if git tag --list | grep -q "^${{ steps.get-version.outputs.version }}$"; then
+          echo "exists=true" >> $GITHUB_OUTPUT
+        else
+          echo "exists=false" >> $GITHUB_OUTPUT
+        fi
+
+    - name: Should we release?
+      id: should-release
+      run: |
+        if [[ "${{ steps.check-tag.outputs.exists }}" == "false" ]]; then
+          echo "result=true" >> $GITHUB_OUTPUT
+        else
+          echo "result=false" >> $GITHUB_OUTPUT
+        fi
+
+  create-tag:
+    needs: check-version
+    if: needs.check-version.outputs.should-release == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - uses: actions/checkout@v6
+
+    - name: Create and push tag
+      run: |
+        git config user.name github-actions
+        git config user.email github-actions@github.com
+        git tag ${{ needs.check-version.outputs.version }}
+        git push origin ${{ needs.check-version.outputs.version }}
+
+  create-release:
+    needs: [check-version, create-tag]
+    if: needs.check-version.outputs.should-release == 'true'
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+    - uses: actions/checkout@v6
+      with:
+        fetch-depth: 0
+
+    - name: Create GitHub Release
+      uses: softprops/action-gh-release@v1
+      with:
+        tag_name: ${{ needs.check-version.outputs.version }}
+        name: Release ${{ needs.check-version.outputs.version }}
+        body: |
+          ## Changes
+
+          See [CHANGELOG.md](CHANGELOG.md) for detailed changes.
+
+          ## Installation
+
+          Download the source archive from the assets below and install with:
+          ```bash
+                    pip install hello.tar.gz
+          ```
+        draft: false
+        prerelease: false
+        generate_release_notes: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

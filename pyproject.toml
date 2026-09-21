@@ -1,7 +1,7 @@
 [tool.poetry]
 name = "hello"
 version = "0.3.0"
-description = ""
+description = "a small terminal that says hello to you."
 authors = ["Timothy Brantley II <tbrantleyii@gmail.com>"]
 
 [tool.poetry.dependencies]
